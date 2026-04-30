@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ThinkFirst</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; font-family: 'Inter', sans-serif; }
+  #root { height: 100%; }
+
+  @keyframes orbFloat {
+    0%,100% { transform: translateY(3px) scale(1); }
+    50%      { transform: translateY(-3px) scale(1.04); }
+  }
+  @keyframes orbPulse {
+    0%,100% { opacity: .82; }
+    50%      { opacity: 1; }
+  }
+  @keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes dotBounce {
+    0%,80%,100% { transform: translateY(0); opacity: .4; }
+    40%          { transform: translateY(-5px); opacity: 1; }
+  }
+  @keyframes progressGlow {
+    0%,100% { opacity: .75; }
+    50%      { opacity: 1; }
+  }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(17,24,39,0.12); border-radius: 2px; }
+
+  textarea { -webkit-tap-highlight-color: transparent; }
+  button   { -webkit-tap-highlight-color: transparent; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ── Brand tokens ──────────────────────────────────────────────────────────────
+const B = {
+  purple:  '#7B8CFF',
+  purpleL: '#B8C1FF',
+  pink:    '#FFB3C1',
+  yellow:  '#FFD697',
+  blue:    '#DCE8FF',
+  dark:    '#111827',
+  mid:     '#6B7280',
+  light:   '#9CA3AF',
+  border:  'rgba(17,24,39,0.07)',
+  bg:      '#FAF9F6',
+};
+
+const STARTERS = [
+  "I have an idea I want to think through",
+  "I'm not sure if my idea solves a real problem",
+  "I know what to build but not who it's really for",
+  "I've already tried building something and it didn't work",
+];
+
+const BRIEF_SECTIONS = [
+  { key: 'problem', label: 'Problem Statement', symbol: '○' },
+  { key: 'user',    label: 'Target User',        symbol: '◇' },
+  { key: 'matters', label: 'Why It Matters',     symbol: '△' },
+  { key: 'next',    label: 'What To Do Next',    symbol: '□' },
+];
+
+// ── Hooks ─────────────────────────────────────────────────────────────────────
+function useIsDesktop() {
+  const [v, setV] = useState(() => window.innerWidth >= 768);
+  useEffect(() => {
+    const h = () => setV(window.innerWidth >= 768);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  return v;
+}
+
+// ── API ───────────────────────────────────────────────────────────────────────
+async function apiCreateSession() {
+  const res = await fetch('/api/session', { method: 'POST' });
+  if (!res.ok) throw new Error('Failed to create session');
+  return res.json();
+}
+
+async function apiChat(sessionId, message) {
+  const res = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: sessionId, message }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Something went wrong');
+  }
+  return res.json();
+}
+
+// ── Orb ───────────────────────────────────────────────────────────────────────
+let orbCounter = 0;
+function Orb({ size = 56, style = {} }) {
+  const id = useRef(`orb${++orbCounter}`).current;
+  return (
+    <svg width={size} height={size} viewBox="0 0 56 56" fill="none" style={style} aria-hidden="true">
+      <defs>
+        <radialGradient id={id} cx="38%" cy="32%" r="68%">
+          <stop offset="0%"   stopColor={B.yellow}  stopOpacity="0.8"  />
+          <stop offset="30%"  stopColor={B.pink}    stopOpacity="0.75" />
+          <stop offset="65%"  stopColor={B.purple}  stopOpacity="0.85" />
+          <stop offset="100%" stopColor={B.purpleL} stopOpacity="0.55" />
+        </radialGradient>
+        <filter id={`f${id}`}><feGaussianBlur stdDeviation="0.5" /></filter>
+      </defs>
+      <circle cx="28" cy="28" r="28" fill={`url(#${id})`} filter={`url(#f${id})`} />
+    </svg>
+  );
+}
+
+// ── TypingDots ────────────────────────────────────────────────────────────────
+function TypingDots() {
+  return (
+    <div style={{ display: 'flex', gap: 4, alignItems: 'center', padding: '4px 0' }}>
+      {[0,1,2].map(i => (
+        <div key={i} style={{
+          width: 6, height: 6, borderRadius: '50%',
+          background: B.purple, opacity: .45,
+          animation: `dotBounce 1.2s ease-in-out ${i * 0.18}s infinite`,
+        }} />
+      ))}
+    </div>
+  );
+}
+
+// ── ProgressBar ───────────────────────────────────────────────────────────────
+function ProgressBar({ value }) {
+  return (
+    <div style={{ height: 2, background: B.border, borderRadius: 2, overflow: 'hidden' }}>
+      <div style={{
+        height: '100%',
+        width: `${Math.min(1, Math.max(0, value)) * 100}%`,
+        background: `linear-gradient(90deg, ${B.purple}, ${B.pink})`,
+        borderRadius: 2,
+        transition: 'width 0.9s cubic-bezier(0.4,0,0.2,1)',
+        animation: 'progressGlow 2s ease-in-out infinite',
+      }} />
+    </div>
+  );
+}
+
+// ── Message bubble ────────────────────────────────────────────────────────────
+function Message({ msg, d }) {
+  const isAI = msg.role === 'ai';
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: isAI ? 'row' : 'row-reverse',
+      alignItems: 'flex-end',
+      gap: d ? 10 : 9,
+      animation: 'fadeSlideUp 0.38s cubic-bezier(0.4,0,0.2,1) both',
+    }}>
+      {isAI && <Orb size={d ? 30 : 28} style={{ flexShrink: 0 }} />}
+      <div style={{
+        maxWidth: d ? '72%' : '80%',
+        background: isAI ? 'transparent' : `linear-gradient(140deg, ${B.purple}ee, ${B.purpleL})`,
+        color: isAI ? B.dark : 'white',
+        borderRadius: isAI ? 0 : '16px 16px 4px 16px',
+        padding: isAI ? '2px 0' : (d ? '12px 18px' : '11px 15px'),
+        fontSize: d ? 15 : 14.5,
+        lineHeight: 1.65,
+        fontFamily: 'Inter',
+        fontWeight: 400,
+        boxShadow: isAI ? 'none' : `0 2px 14px ${B.purple}35`,
+      }}>
+        {msg.text}
+      </div>
+    </div>
+  );
+}
+
+// ── TopNav (desktop only) ─────────────────────────────────────────────────────
+function TopNav({ onLogoClick }) {
+  return (
+    <div style={{
+      position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '0 32px', height: 56,
+      background: 'rgba(250,249,246,0.82)',
+      borderBottom: `1px solid ${B.border}`,
+      backdropFilter: 'blur(16px)',
+      WebkitBackdropFilter: 'blur(16px)',
+    }}>
+      <div style={{ width: '100%', maxWidth: 680, display: 'flex', alignItems: 'center' }}>
+        <button onClick={onLogoClick} style={{
+          display: 'flex', alignItems: 'center', gap: 9,
+          background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+        }}>
+          <Orb size={26} style={{ animation: 'orbFloat 5s ease-in-out infinite, orbPulse 5s ease-in-out infinite' }} />
+          <span style={{ fontFamily: 'Inter', fontWeight: 600, fontSize: 15, color: B.dark, letterSpacing: '-0.2px' }}>ThinkFirst</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Screen: Landing ───────────────────────────────────────────────────────────
+function Landing({ onStart, d }) {
+  const [value, setValue] = useState('');
+  const [focused, setFocused] = useState(false);
+  const inputRef = useRef(null);
+  const canSubmit = value.trim().length >= 3;
+  const submit = () => { if (canSubmit) onStart(value.trim()); };
+
+  const SendIcon = ({ size }) => (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+      <path d="M8 13V3M3 8l5-5 5 5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+
+  return (
+    <div style={{
+      minHeight: '100%',
+      display: 'flex', flexDirection: 'column',
+      ...(d ? { alignItems: 'center' } : { padding: '0 0 48px' }),
+      animation: 'fadeIn 0.5s ease',
+    }}>
+      {/* Mobile nav */}
+      {!d && (
+        <div style={{ padding: '48px 28px 0', display: 'flex', alignItems: 'center', gap: 9 }}>
+          <Orb size={30} style={{ animation: 'orbFloat 4.5s ease-in-out infinite, orbPulse 4.5s ease-in-out infinite' }} />
+          <span style={{ fontFamily: 'Inter', fontWeight: 600, fontSize: 15.5, color: B.dark, letterSpacing: '-0.2px' }}>ThinkFirst</span>
+        </div>
+      )}
+
+      <div style={{
+        width: '100%',
+        ...(d
+          ? { maxWidth: 680, padding: '120px 32px 100px', display: 'flex', flexDirection: 'column' }
+          : { flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '36px 28px 0' }
+        ),
+      }}>
+        {/* Hero orb */}
+        <div style={{
+          position: 'relative',
+          width: d ? 120 : 88, height: d ? 120 : 88,
+          marginBottom: d ? 0 : 28,
+          ...(d ? { alignSelf: 'center', marginBottom: 36 } : {}),
+        }}>
+          <div style={{
+            position: 'absolute', inset: d ? -40 : -18,
+            background: `radial-gradient(circle, ${B.purple}${d ? '28' : '20'} 0%, ${d ? B.pink + '14 40%, ' : ''}transparent 70%)`,
+            filter: `blur(${d ? 18 : 10}px)`,
+          }} />
+          <div style={{
+            width: d ? 120 : 88, height: d ? 120 : 88,
+            borderRadius: '50%',
+            background: `radial-gradient(circle at 38% 32%, ${B.yellow}cc, ${B.pink}aa 38%, ${B.purple}cc 72%, ${B.blue}88)`,
+            filter: 'blur(1.5px)',
+            animation: 'orbFloat 5.5s ease-in-out infinite, orbPulse 5.5s ease-in-out infinite',
+            ...(d ? { boxShadow: `0 8px 48px ${B.purple}30, 0 2px 16px ${B.pink}28` } : {}),
+          }} />
+        </div>
+
+        {/* Headline */}
+        <div style={d ? { textAlign: 'center', marginBottom: 64 } : {}}>
+          <h1 style={{
+            fontFamily: 'Source Serif 4', fontWeight: 300,
+            fontSize: d ? 42 : 29,
+            lineHeight: d ? 1.18 : 1.22,
+            color: B.dark,
+            letterSpacing: d ? '-0.8px' : '-0.4px',
+            marginBottom: d ? 18 : 14,
+            ...(d ? { maxWidth: 540, margin: '0 auto 18px' } : {}),
+          }}>
+            Got an idea? Let's think it through before you build it.
+          </h1>
+          <p style={{
+            fontFamily: 'Inter',
+            fontSize: d ? 16 : 14,
+            color: B.mid, lineHeight: 1.6,
+            marginBottom: d ? 0 : 40,
+            ...(d ? { maxWidth: 400, margin: '0 auto' } : {}),
+          }}>
+            Takes 3 minutes. One question at a time.
+          </p>
+        </div>
+
+        {/* Input */}
+        <div style={{ position: 'relative', marginBottom: 16 }}>
+          <textarea
+            ref={inputRef}
+            value={value}
+            onChange={e => setValue(e.target.value)}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
+            placeholder="What are you thinking of building?"
+            rows={d ? 2 : 3}
+            style={{
+              width: '100%', resize: 'none',
+              fontFamily: 'Inter', fontSize: d ? 16 : 15, color: B.dark,
+              background: 'white',
+              border: `1.5px solid ${focused ? B.purple + '66' : B.border}`,
+              borderRadius: d ? 18 : 16,
+              padding: d ? '16px 60px 16px 20px' : '13px 50px 13px 16px',
+              outline: 'none', lineHeight: 1.55,
+              boxShadow: focused ? `0 0 0 4px ${B.purple}12` : `0 1px ${d ? 6 : 4}px rgba(0,0,0,0.05)`,
+              transition: 'all 0.2s ease',
+            }}
+          />
+          <button
+            onClick={submit}
+            disabled={!canSubmit}
+            style={{
+              position: 'absolute',
+              right: d ? 12 : 10, bottom: d ? 12 : 10,
+              width: d ? 40 : 34, height: d ? 40 : 34,
+              borderRadius: '50%',
+              background: canSubmit ? `linear-gradient(140deg, ${B.purple}, ${B.pink})` : B.border,
+              border: 'none', cursor: canSubmit ? 'pointer' : 'default',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 0.22s ease',
+              transform: canSubmit ? 'scale(1)' : 'scale(0.88)',
+              boxShadow: canSubmit ? `0 2px 10px ${B.purple}40` : 'none',
+            }}
+          >
+            <SendIcon size={d ? 15 : 14} />
+          </button>
+        </div>
+
+        {/* Starters */}
+        <p style={{
+          fontSize: d ? 11 : 10.5, color: B.light,
+          textTransform: 'uppercase', letterSpacing: '0.09em',
+          fontWeight: 600, marginTop: 40, marginBottom: d ? 12 : 9,
+          fontFamily: 'Inter',
+        }}>
+          Choose a starting point
+        </p>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: d ? '1fr 1fr' : '1fr',
+          gap: d ? 10 : 7,
+        }}>
+          {STARTERS.map((s, i) => (
+            <button
+              key={i}
+              onClick={() => { setValue(s); setTimeout(() => inputRef.current?.focus(), 10); }}
+              style={{
+                background: 'white', border: `1px solid ${B.border}`,
+                borderRadius: d ? 14 : 12,
+                padding: d ? '12px 14px' : '10px 13px',
+                fontFamily: 'Inter', fontSize: 13.5, color: B.mid,
+                cursor: 'pointer', textAlign: 'left',
+                display: 'flex', alignItems: d ? 'flex-start' : 'center',
+                gap: d ? 9 : 8,
+                transition: 'all 0.15s ease', lineHeight: 1.45,
+                animation: `fadeSlideUp 0.4s ease ${i * 0.07 + (d ? 0.1 : 0.15)}s both`,
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = B.purple + '55';
+                e.currentTarget.style.color = B.dark;
+                e.currentTarget.style.background = B.blue + '44';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = B.border;
+                e.currentTarget.style.color = B.mid;
+                e.currentTarget.style.background = 'white';
+              }}
+            >
+              <Orb size={d ? 14 : 13} style={{ flexShrink: 0, ...(d ? { marginTop: 1 } : {}) }} />
+              {s}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Screen: Chat ──────────────────────────────────────────────────────────────
+function ChatScreen({ sessionId, seed, onComplete, d }) {
+  const [messages, setMessages]   = useState([{ role: 'user', text: seed, id: 1 }]);
+  const [input, setInput]         = useState('');
+  const [isTyping, setIsTyping]   = useState(true);
+  const [focused, setFocused]     = useState(false);
+  const [turnCount, setTurnCount] = useState(0);
+  const [error, setError]         = useState(null);
+  const [done, setDone]           = useState(false);
+  const scrollRef  = useRef(null);
+  const inputRef   = useRef(null);
+
+  const scrollDown = useCallback(() => {
+    requestAnimationFrame(() => {
+      if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    });
+  }, []);
+
+  // First turn — send seed immediately on mount
+  useEffect(() => {
+    apiChat(sessionId, seed)
+      .then(data => {
+        setMessages(prev => [...prev, { role: 'ai', text: data.message, id: Date.now() }]);
+        setTurnCount(1);
+        setIsTyping(false);
+        scrollDown();
+        if (data.output_ready) {
+          setDone(true);
+          setTimeout(() => onComplete(data.brief), 1400);
+        }
+      })
+      .catch(() => {
+        setIsTyping(false);
+        setError('Connection error. Please try again.');
+      });
+  }, []);
+
+  useEffect(() => { scrollDown(); }, [messages, isTyping]);
+
+  const send = async () => {
+    const v = input.trim();
+    if (!v || isTyping || done) return;
+    setInput('');
+    setError(null);
+    setMessages(prev => [...prev, { role: 'user', text: v, id: Date.now() + Math.random() }]);
+    setIsTyping(true);
+
+    try {
+      const data = await apiChat(sessionId, v);
+      setTurnCount(t => t + 1);
+      setTimeout(() => {
+        setMessages(prev => [...prev, { role: 'ai', text: data.message, id: Date.now() + Math.random() }]);
+        setIsTyping(false);
+        scrollDown();
+        if (data.output_ready) {
+          setDone(true);
+          setTimeout(() => onComplete(data.brief), 1400);
+        }
+      }, 280);
+    } catch (err) {
+      setIsTyping(false);
+      setError('Something went wrong. Try again.');
+    }
+  };
+
+  const progress = Math.min(1, turnCount / 12);
+
+  const SendIcon = () => (
+    <svg width={d ? 14 : 13} height={d ? 14 : 13} viewBox="0 0 16 16" fill="none">
+      <path d="M8 13V3M3 8l5-5 5 5" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+
+  const renderInputArea = () => (
+    <div style={{
+      ...(d
+        ? { borderTop: `1px solid ${B.border}`, background: 'rgba(250,249,246,0.92)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', padding: '14px 32px 22px', flexShrink: 0 }
+        : { padding: '9px 16px 22px', borderTop: `1px solid ${B.border}`, flexShrink: 0, background: B.bg }
+      ),
+    }}>
+      <div style={{ ...(d ? { maxWidth: 680, margin: '0 auto' } : {}), position: 'relative' }}>
+        <textarea
+          ref={inputRef}
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
+          placeholder={done ? 'Generating your brief…' : 'Your thoughts…'}
+          rows={2}
+          disabled={isTyping || done}
+          style={{
+            width: '100%', resize: 'none',
+            fontFamily: 'Inter', fontSize: d ? 15.5 : 14.5, color: B.dark,
+            background: (isTyping || done) ? 'rgba(255,255,255,0.5)' : 'white',
+            border: `1.5px solid ${focused ? B.purple + '55' : B.border}`,
+            borderRadius: d ? 16 : 14,
+            padding: d ? '13px 56px 13px 18px' : '11px 46px 11px 14px',
+            outline: 'none', lineHeight: 1.55,
+            boxShadow: focused ? `0 0 0 4px ${B.purple}10` : (d ? '0 1px 6px rgba(0,0,0,0.04)' : 'none'),
+            transition: 'all 0.18s ease',
+            opacity: (isTyping || done) ? 0.55 : 1,
+          }}
+        />
+        <button
+          onClick={send}
+          disabled={!input.trim() || isTyping || done}
+          style={{
+            position: 'absolute',
+            right: d ? 10 : 8, bottom: d ? 10 : 8,
+            width: d ? 38 : 32, height: d ? 38 : 32,
+            borderRadius: '50%',
+            background: (input.trim() && !isTyping && !done)
+              ? `linear-gradient(140deg, ${B.purple}, ${B.pink})` : B.border,
+            border: 'none',
+            cursor: (input.trim() && !isTyping && !done) ? 'pointer' : 'default',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'all 0.18s ease',
+            transform: (input.trim() && !isTyping && !done) ? 'scale(1)' : 'scale(0.86)',
+            boxShadow: (input.trim() && !isTyping && !done) ? `0 2px 10px ${B.purple}38` : 'none',
+          }}
+        >
+          <SendIcon />
+        </button>
+      </div>
+    </div>
+  );
+
+  // ── Mobile layout ──
+  if (!d) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div style={{ padding: '15px 20px 0', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <Orb size={22} style={{ animation: 'orbFloat 4s ease-in-out infinite' }} />
+            <span style={{ fontSize: 14, fontWeight: 600, color: B.dark, fontFamily: 'Inter' }}>ThinkFirst</span>
+          </div>
+          <ProgressBar value={progress} />
+        </div>
+
+        <div ref={scrollRef} style={{
+          flex: 1, overflowY: 'auto',
+          padding: '16px 18px 10px',
+          display: 'flex', flexDirection: 'column', gap: 15,
+        }}>
+          {messages.map(m => <Message key={m.id} msg={m} d={false} />)}
+          {isTyping && (
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 9, animation: 'fadeIn 0.28s ease' }}>
+              <Orb size={28} />
+              <div style={{ background: 'white', borderRadius: '4px 16px 16px 16px', padding: '8px 14px', border: `1px solid ${B.border}` }}>
+                <TypingDots />
+              </div>
+            </div>
+          )}
+          {error && <p style={{ fontSize: 13, color: '#EF4444', fontFamily: 'Inter', animation: 'fadeIn 0.3s ease' }}>{error}</p>}
+        </div>
+
+        {renderInputArea()}
+      </div>
+    );
+  }
+
+  // ── Desktop layout ──
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+      <div style={{ position: 'fixed', top: 56, left: 0, right: 0, zIndex: 99 }}>
+        <ProgressBar value={progress} />
+      </div>
+
+      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', paddingTop: 80 }}>
+        <div style={{ maxWidth: 680, margin: '0 auto', padding: '32px 32px 16px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {messages.map(m => <Message key={m.id} msg={m} d={true} />)}
+          {isTyping && (
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, animation: 'fadeIn 0.28s ease' }}>
+              <Orb size={30} />
+              <TypingDots />
+            </div>
+          )}
+          {error && <p style={{ fontSize: 13.5, color: '#EF4444', fontFamily: 'Inter', animation: 'fadeIn 0.3s ease' }}>{error}</p>}
+        </div>
+      </div>
+
+      {renderInputArea()}
+    </div>
+  );
+}
+
+// ── Screen: Brief ─────────────────────────────────────────────────────────────
+function BriefScreen({ brief, onRestart, d }) {
+  const [copied, setCopied] = useState(false);
+
+  const copyText = () => {
+    const text = BRIEF_SECTIONS.map(s => `${s.label}\n${brief[s.key] || ''}`).join('\n\n');
+    navigator.clipboard?.writeText(text).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2200);
+  };
+
+  const CopyIcon  = () => <svg width={d ? 14 : 13} height={d ? 14 : 13} viewBox="0 0 16 16" fill="none"><rect x="5" y="5" width="9" height="9" rx="2" stroke={B.mid} strokeWidth="1.5"/><path d="M11 5V3a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h2" stroke={B.mid} strokeWidth="1.5" strokeLinecap="round"/></svg>;
+  const CheckIcon = () => <svg width={d ? 14 : 13} height={d ? 14 : 13} viewBox="0 0 16 16" fill="none"><path d="M3 8l4 4 6-7" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+
+  const SectionContent = ({ s }) => {
+    const content = brief[s.key] || '';
+    if (s.key === 'next') {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          {content.split('\n').filter(l => l.trim()).map((line, i) => (
+            <p key={i} style={{ fontFamily: 'Source Serif 4', fontSize: d ? 15 : 14.5, lineHeight: 1.7, color: B.dark, fontWeight: 300 }}>
+              {line}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return (
+      <p style={{ fontFamily: 'Source Serif 4', fontSize: d ? 15 : 14.5, lineHeight: 1.7, color: B.dark, fontWeight: 300 }}>
+        {content}
+      </p>
+    );
+  };
+
+  return (
+    <div style={{
+      ...(d ? { minHeight: '100vh', paddingTop: 80 } : { padding: '22px 20px 40px' }),
+      animation: 'fadeIn 0.45s ease',
+    }}>
+      <div style={d ? { maxWidth: 680, margin: '0 auto', padding: '64px 32px 100px' } : {}}>
+
+        {/* Header */}
+        <div style={{ marginBottom: d ? 52 : 22 }}>
+          {!d && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              <Orb size={22} style={{ animation: 'orbPulse 3s ease-in-out infinite' }} />
+              <span style={{ fontSize: 13, fontWeight: 500, color: B.mid, fontFamily: 'Inter' }}>ThinkFirst</span>
+            </div>
+          )}
+          <p style={{ fontSize: d ? 11 : 10.5, textTransform: 'uppercase', letterSpacing: '0.09em', color: B.light, fontWeight: 600, marginBottom: d ? 8 : 5, fontFamily: 'Inter' }}>
+            Your brief
+          </p>
+          <h2 style={{
+            fontFamily: 'Source Serif 4', fontWeight: 300,
+            fontSize: d ? 36 : 26,
+            color: B.dark, lineHeight: 1.18,
+            marginBottom: d ? 8 : 5,
+            letterSpacing: d ? '-0.5px' : '-0.3px',
+          }}>
+            Here's what I heard.
+          </h2>
+          <p style={{ fontFamily: 'Inter', fontSize: d ? 15 : 13, color: B.light }}>
+            A clear picture of your idea, ready to act on.
+          </p>
+        </div>
+
+        {/* Cards */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: d ? '1fr 1fr' : '1fr',
+          gap: d ? 14 : 10,
+          marginBottom: d ? 32 : 18,
+        }}>
+          {BRIEF_SECTIONS.map((s, i) => (
+            <div key={s.key} style={{
+              background: 'white',
+              borderRadius: d ? 18 : 16,
+              padding: d ? '20px 22px' : '15px 17px',
+              border: `1px solid ${B.border}`,
+              boxShadow: '0 1px 6px rgba(0,0,0,0.04)',
+              animation: `fadeSlideUp 0.42s ease ${i * 0.09 + 0.05}s both`,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: d ? 10 : 7 }}>
+                <div style={{
+                  width: d ? 22 : 20, height: d ? 22 : 20, borderRadius: '50%',
+                  background: `linear-gradient(135deg, ${B.purple}22, ${B.pink}22)`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 9, color: B.purple, flexShrink: 0,
+                }}>{s.symbol}</div>
+                <span style={{ fontSize: 10.5, fontWeight: 600, color: B.purple, textTransform: 'uppercase', letterSpacing: '0.07em', fontFamily: 'Inter' }}>
+                  {s.label}
+                </span>
+              </div>
+              <SectionContent s={s} />
+            </div>
+          ))}
+        </div>
+
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: d ? 10 : 9 }}>
+          <button onClick={copyText} style={{
+            ...(d ? { padding: '13px 28px' } : { flex: 1, padding: '13px 0' }),
+            borderRadius: 14,
+            background: copied ? `linear-gradient(140deg, ${B.purple}, ${B.pink})` : 'white',
+            color: copied ? 'white' : B.dark,
+            border: `1.5px solid ${copied ? 'transparent' : B.border}`,
+            fontFamily: 'Inter', fontSize: d ? 14.5 : 14, fontWeight: 500,
+            cursor: 'pointer', transition: 'all 0.22s ease',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: d ? 7 : 6,
+            boxShadow: copied ? `0 2px 16px ${B.purple}38` : 'none',
+          }}>
+            {copied ? <><CheckIcon />Copied</> : <><CopyIcon />Copy brief</>}
+          </button>
+          <button onClick={onRestart} style={{
+            padding: d ? '13px 24px' : '13px 16px',
+            borderRadius: 14,
+            background: 'white', color: B.mid,
+            border: `1.5px solid ${B.border}`,
+            fontFamily: 'Inter', fontSize: d ? 14.5 : 14, fontWeight: 500,
+            cursor: 'pointer', transition: 'all 0.18s ease',
+          }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = B.purple + '55'; e.currentTarget.style.color = B.dark; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = B.border; e.currentTarget.style.color = B.mid; }}
+          >
+            Start over
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Loading / Error ───────────────────────────────────────────────────────────
+function LoadingScreen({ error }) {
+  return (
+    <div style={{
+      height: '100%', display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', gap: 16,
+      fontFamily: 'Inter', color: B.mid, animation: 'fadeIn 0.4s ease',
+    }}>
+      <Orb size={48} style={{ animation: 'orbFloat 3s ease-in-out infinite, orbPulse 3s ease-in-out infinite' }} />
+      {error
+        ? <p style={{ fontSize: 14, color: '#EF4444', maxWidth: 280, textAlign: 'center', lineHeight: 1.5 }}>{error}</p>
+        : <p style={{ fontSize: 14 }}>Loading…</p>
+      }
+    </div>
+  );
+}
+
+// ── App ───────────────────────────────────────────────────────────────────────
+function App() {
+  const d = useIsDesktop();
+  const [sessionId, setSessionId]   = useState(null);
+  const [initError, setInitError]   = useState(null);
+  const [screen, setScreen]         = useState('loading');
+  const [seed, setSeed]             = useState('');
+  const [brief, setBrief]           = useState(null);
+
+  const initSession = useCallback(() => {
+    setScreen('loading');
+    setInitError(null);
+    apiCreateSession()
+      .then(({ session_id }) => {
+        setSessionId(session_id);
+        setScreen('landing');
+      })
+      .catch(() => setInitError('Could not connect to server. Make sure the backend is running on port 3000.'));
+  }, []);
+
+  useEffect(() => { initSession(); }, []);
+
+  const handleStart    = (idea) => { setSeed(idea); setScreen('chat'); };
+  const handleComplete = (b)    => { setBrief(b); setScreen('brief'); };
+  const handleRestart  = ()     => { setBrief(null); setSeed(''); initSession(); };
+
+  const bgStyle = {
+    minHeight: '100vh',
+    background: d
+      ? `radial-gradient(ellipse at 20% 10%, ${B.yellow}1e 0%, transparent 48%),
+         radial-gradient(ellipse at 85% 85%, ${B.purple}18 0%, transparent 48%),
+         radial-gradient(ellipse at 75% 12%, ${B.pink}14 0%, transparent 40%),
+         ${B.bg}`
+      : B.bg,
+    fontFamily: 'Inter, sans-serif',
+  };
+
+  if (screen === 'loading') {
+    return (
+      <div style={{ ...bgStyle, height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <LoadingScreen error={initError} />
+      </div>
+    );
+  }
+
+  return (
+    <div style={bgStyle}>
+      {/* Desktop TopNav — visible on all screens except landing (landing handles its own nav) */}
+      {d && screen !== 'landing' && <TopNav onLogoClick={handleRestart} />}
+      {d && screen === 'landing' && <TopNav onLogoClick={() => {}} />}
+
+      {screen === 'landing' && (
+        <div style={d ? {} : { height: '100vh', overflowY: 'auto' }}>
+          <Landing onStart={handleStart} d={d} />
+        </div>
+      )}
+
+      {screen === 'chat' && sessionId && (
+        <div style={d ? {} : { height: '100vh', display: 'flex', flexDirection: 'column' }}>
+          <ChatScreen
+            key={sessionId}
+            sessionId={sessionId}
+            seed={seed}
+            onComplete={handleComplete}
+            d={d}
+          />
+        </div>
+      )}
+
+      {screen === 'brief' && brief && (
+        <div style={d ? {} : { height: '100vh', overflowY: 'auto' }}>
+          <BriefScreen brief={brief} onRestart={handleRestart} d={d} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

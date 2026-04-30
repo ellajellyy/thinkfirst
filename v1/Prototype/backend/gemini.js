@@ -1,6 +1,8 @@
 'use strict';
 
 require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -84,4 +86,151 @@ async function callOutputGeneration(systemPrompt, contextString) {
   }
 }
 
-module.exports = { callConversation, callOutputGeneration };
+// ── V2 Analysis Pipeline ──────────────────────────────────────────────────────
+
+const promptCache = {};
+function loadPrompt(filename) {
+  if (!promptCache[filename]) {
+    promptCache[filename] = fs.readFileSync(
+      path.join(__dirname, '../../../v2/prompts', filename),
+      'utf8'
+    );
+  }
+  return promptCache[filename];
+}
+
+function getUsage(result) {
+  const u = result.response.usageMetadata || {};
+  return { input_tokens: u.promptTokenCount || 0, output_tokens: u.candidatesTokenCount || 0 };
+}
+
+/**
+ * Pass 1: Extract assumptions from the interview transcript.
+ * @param {object} session - Full session object (message_history, raw_idea, dimension_state)
+ * @returns {{ data: Array, meta: object }}
+ */
+async function callPass1(session) {
+  const model = genAI.getGenerativeModel({
+    model: MODEL,
+    systemInstruction: loadPrompt('extraction_v1.txt'),
+    generationConfig: { responseMimeType: 'application/json', temperature: 0.0 },
+  });
+
+  const transcript = session.message_history
+    .map(m => `${m.role === 'user' ? 'Builder' : 'ThinkFirst'}: ${m.text}`)
+    .join('\n\n');
+
+  const userInput = `Session ID: ${session.session_id}
+Raw Idea: "${session.raw_idea}"
+
+Dimensions:
+${JSON.stringify(session.dimension_state, null, 2)}
+
+Full Conversation Transcript:
+${transcript}`;
+
+  const result = await model.generateContent(userInput);
+  const raw = result.response.text();
+
+  let parsed;
+  try { parsed = JSON.parse(raw); } catch {
+    throw new Error(`Pass 1 returned unparseable JSON: ${raw.slice(0, 300)}`);
+  }
+
+  const data = Array.isArray(parsed) ? parsed
+    : Array.isArray(parsed.assumption_map) ? parsed.assumption_map
+    : Array.isArray(parsed.assumptions)    ? parsed.assumptions
+    : (() => { throw new Error('Pass 1: unexpected response shape'); })();
+
+  return {
+    data,
+    meta: { pass: 1, model_name: MODEL, model_version: '001', prompt_version: 'v1',
+            timestamp: new Date().toISOString(), ...getUsage(result) },
+  };
+}
+
+/**
+ * Pass 2: Score the assumption map on 5 radar axes.
+ * @param {Array} assumptionMap - Output of Pass 1
+ * @returns {{ data: Array, meta: object }}
+ */
+async function callPass2(assumptionMap) {
+  const model = genAI.getGenerativeModel({
+    model: MODEL,
+    systemInstruction: loadPrompt('scoring_v1.txt'),
+    generationConfig: { responseMimeType: 'application/json', temperature: 0.0 },
+  });
+
+  const userInput = `## Assumption Map\n\n${JSON.stringify(assumptionMap, null, 2)}`;
+
+  const result = await model.generateContent(userInput);
+  const raw = result.response.text();
+
+  let parsed;
+  try { parsed = JSON.parse(raw); } catch {
+    throw new Error(`Pass 2 returned unparseable JSON: ${raw.slice(0, 300)}`);
+  }
+
+  const data = Array.isArray(parsed) ? parsed
+    : Array.isArray(parsed.eval_scorecard) ? parsed.eval_scorecard
+    : Array.isArray(parsed.scorecard)      ? parsed.scorecard
+    : (() => { throw new Error('Pass 2: unexpected response shape'); })();
+
+  if (data.length !== 5) throw new Error(`Pass 2: expected 5 scorecard items, got ${data.length}`);
+
+  return {
+    data,
+    meta: { pass: 2, model_name: MODEL, model_version: '001', prompt_version: 'v1',
+            timestamp: new Date().toISOString(), ...getUsage(result) },
+  };
+}
+
+/**
+ * Pass 3: Write the Decision Brief using pre-computed calibration.
+ * @param {Array}  assumptionMap - Output of Pass 1
+ * @param {Array}  scorecard     - Output of Pass 2
+ * @param {object} calibration   - { calibration_decision, proceed_blocked, rule_applied }
+ * @returns {{ data: object, meta: object }}
+ */
+async function callPass3(assumptionMap, scorecard, calibration) {
+  const model = genAI.getGenerativeModel({
+    model: MODEL,
+    systemInstruction: loadPrompt('decision_v1.txt'),
+    generationConfig: { responseMimeType: 'application/json', temperature: 0.0 },
+  });
+
+  const userInput = `## Calibration (Pre-computed by backend — do not override)
+calibration_decision: "${calibration.calibration_decision}"
+calibration_reason: "${calibration.rule_applied}"
+proceed_blocked: ${calibration.proceed_blocked}
+
+## Assumption Map
+
+${JSON.stringify(assumptionMap, null, 2)}
+
+## Eval Scorecard
+
+${JSON.stringify(scorecard, null, 2)}`;
+
+  const result = await model.generateContent(userInput);
+  const raw = result.response.text();
+
+  let parsed;
+  try { parsed = JSON.parse(raw); } catch {
+    throw new Error(`Pass 3 returned unparseable JSON: ${raw.slice(0, 300)}`);
+  }
+
+  const data = parsed.decision_brief || parsed;
+  const required = ['one_sentence_idea', 'target_user', 'pain_chain', 'riskiest_assumption', 'decision'];
+  for (const f of required) {
+    if (!data[f]) throw new Error(`Pass 3: missing required field "${f}"`);
+  }
+
+  return {
+    data,
+    meta: { pass: 3, model_name: MODEL, model_version: '001', prompt_version: 'v1',
+            timestamp: new Date().toISOString(), ...getUsage(result) },
+  };
+}
+
+module.exports = { callConversation, callOutputGeneration, callPass1, callPass2, callPass3 };

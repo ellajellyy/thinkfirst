@@ -22,6 +22,8 @@ function createSession() {
     turn_count: 0,
     strike_count: 0,           // resets when current_dimension changes
     created_at: Date.now(),
+    v2_analysis: null,         // populated by /api/analyze after interview
+    run_log: [],               // [{ pass, model_name, prompt_version, timestamp, ... }]
   };
 }
 
