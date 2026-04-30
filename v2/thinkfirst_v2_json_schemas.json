@@ -1,0 +1,688 @@
+{
+  "schema_version": "thinkfirst_v2.0",
+  "status": "locked_draft",
+  "compatibility_notes": {
+    "v1_preserved_fields": [
+      "session_id",
+      "turn_count",
+      "dimensions",
+      "output_ready",
+      "message",
+      "brief"
+    ],
+    "v1_discovery_dimensions_preserved": [
+      "user_specificity",
+      "problem_reality",
+      "frequency_urgency",
+      "workaround_check"
+    ],
+    "v2_additive_fields": [
+      "analysis",
+      "assumption_map",
+      "eval_scorecard",
+      "decision_brief",
+      "run_log"
+    ],
+    "rule": "V2 must be additive. Do not rename or remove V1 fields used by the frontend or orchestrator."
+  },
+  "enums": {
+    "v1_dimension_status": [
+      "weak",
+      "ok",
+      "strong"
+    ],
+    "v1_discovery_dimension": [
+      "user_specificity",
+      "problem_reality",
+      "frequency_urgency",
+      "workaround_check"
+    ],
+    "scorecard_dimension": [
+      "Pain",
+      "User",
+      "Technical",
+      "Competitive",
+      "Evidence"
+    ],
+    "assumption_category": [
+      "target_user",
+      "problem",
+      "frequency_urgency",
+      "workaround",
+      "value",
+      "trust_or_risk",
+      "feasibility",
+      "distribution",
+      "business_model"
+    ],
+    "evidence_status": [
+      "missing",
+      "claimed",
+      "anecdotal",
+      "observed"
+    ],
+    "assumption_quadrant": [
+      "Experiment now",
+      "Plan",
+      "Defer",
+      "Discover"
+    ],
+    "confidence_level": [
+      "low",
+      "medium",
+      "high"
+    ],
+    "decision": [
+      "PARK",
+      "PIVOT",
+      "INVESTIGATE",
+      "PROCEED TO PROTOTYPE"
+    ],
+    "analysis_pass": [
+      "extraction",
+      "scoring",
+      "decision_brief"
+    ]
+  },
+  "schemas": {
+    "v1_dimension_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "justification",
+        "evidence"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "weak",
+            "ok",
+            "strong"
+          ]
+        },
+        "justification": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "v1_dimensions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "user_specificity",
+        "problem_reality",
+        "frequency_urgency",
+        "workaround_check"
+      ],
+      "properties": {
+        "user_specificity": {
+          "$ref": "#/schemas/v1_dimension_state"
+        },
+        "problem_reality": {
+          "$ref": "#/schemas/v1_dimension_state"
+        },
+        "frequency_urgency": {
+          "$ref": "#/schemas/v1_dimension_state"
+        },
+        "workaround_check": {
+          "$ref": "#/schemas/v1_dimension_state"
+        }
+      }
+    },
+    "pass_1_extraction_output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_id",
+        "schema_version",
+        "pass",
+        "assumption_map"
+      ],
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "schema_version": {
+          "type": "string",
+          "const": "thinkfirst_v2.0"
+        },
+        "pass": {
+          "type": "string",
+          "const": "extraction"
+        },
+        "assumption_map": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/schemas/assumption"
+          }
+        }
+      }
+    },
+    "assumption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "assumption_id",
+        "assumption_label",
+        "category",
+        "mapped_v1_dimension",
+        "importance_score",
+        "evidence_score",
+        "evidence_status",
+        "user_evidence_quote",
+        "is_critical",
+        "gap_flag",
+        "quadrant",
+        "next_action"
+      ],
+      "properties": {
+        "assumption_id": {
+          "type": "string",
+          "pattern": "^A[0-9]{2}$"
+        },
+        "assumption_label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "target_user",
+            "problem",
+            "frequency_urgency",
+            "workaround",
+            "value",
+            "trust_or_risk",
+            "feasibility",
+            "distribution",
+            "business_model"
+          ]
+        },
+        "mapped_v1_dimension": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "user_specificity",
+            "problem_reality",
+            "frequency_urgency",
+            "workaround_check",
+            null
+          ]
+        },
+        "importance_score": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "description": "1 = low importance, 5 = critical to idea validity"
+        },
+        "evidence_score": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "description": "X-axis score: 1-2 = Red/Critical/No Evidence, 3 = Orange/Weak, 4-5 = Green/Solid/Have Evidence"
+        },
+        "evidence_status": {
+          "type": "string",
+          "enum": [
+            "missing",
+            "claimed",
+            "anecdotal",
+            "observed"
+          ],
+          "description": "missing = no support; claimed = founder assertion; anecdotal = personal or secondhand evidence; observed = specific external observation"
+        },
+        "user_evidence_quote": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Direct quote or close quote from the builder. Null when evidence_status is missing."
+        },
+        "is_critical": {
+          "type": "boolean"
+        },
+        "gap_flag": {
+          "type": "boolean",
+          "description": "True when evidence_status is missing or claimed for an important assumption."
+        },
+        "quadrant": {
+          "type": "string",
+          "enum": [
+            "Experiment now",
+            "Plan",
+            "Defer",
+            "Discover"
+          ],
+          "description": "Use verbatim UI labels only. Experiment now = high importance + low evidence; Plan = high importance + high evidence; Defer = low importance + low evidence; Discover = low importance + high evidence."
+        },
+        "next_action": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 90,
+          "description": "Concise UI detail-box action. Keep under 15 words."
+        }
+      }
+    },
+    "pass_2_scoring_output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_id",
+        "schema_version",
+        "pass",
+        "eval_scorecard"
+      ],
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "schema_version": {
+          "type": "string",
+          "const": "thinkfirst_v2.0"
+        },
+        "pass": {
+          "type": "string",
+          "const": "scoring"
+        },
+        "eval_scorecard": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/schemas/scorecard_item"
+          }
+        }
+      }
+    },
+    "scorecard_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dimension_name",
+        "score",
+        "reason",
+        "failure_mode",
+        "improvement_tip",
+        "supporting_assumption_ids"
+      ],
+      "properties": {
+        "dimension_name": {
+          "type": "string",
+          "enum": [
+            "Pain",
+            "User",
+            "Technical",
+            "Competitive",
+            "Evidence"
+          ]
+        },
+        "score": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "failure_mode": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Null only when score is 4 or 5."
+        },
+        "improvement_tip": {
+          "type": "string",
+          "minLength": 1
+        },
+        "supporting_assumption_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^A[0-9]{2}$"
+          }
+        }
+      }
+    },
+    "pass_3_decision_brief_output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_id",
+        "schema_version",
+        "pass",
+        "decision_brief"
+      ],
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "schema_version": {
+          "type": "string",
+          "const": "thinkfirst_v2.0"
+        },
+        "pass": {
+          "type": "string",
+          "const": "decision_brief"
+        },
+        "decision_brief": {
+          "$ref": "#/schemas/decision_brief"
+        }
+      }
+    },
+    "decision_brief": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "one_sentence_idea",
+        "target_user",
+        "pain_chain",
+        "current_workaround",
+        "riskiest_assumption",
+        "evidence_needed",
+        "invalidation_threshold",
+        "next_3_experiments",
+        "confidence_level",
+        "honest_gaps",
+        "decision",
+        "calibration"
+      ],
+      "properties": {
+        "one_sentence_idea": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_user": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pain_chain": {
+          "type": "string",
+          "minLength": 1
+        },
+        "current_workaround": {
+          "type": "string",
+          "minLength": 1
+        },
+        "riskiest_assumption": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_needed": {
+          "type": "string",
+          "minLength": 1
+        },
+        "invalidation_threshold": {
+          "type": "string",
+          "minLength": 1
+        },
+        "next_3_experiments": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/schemas/experiment"
+          }
+        },
+        "confidence_level": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "honest_gaps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "decision": {
+          "type": "string",
+          "enum": [
+            "PARK",
+            "PIVOT",
+            "INVESTIGATE",
+            "PROCEED TO PROTOTYPE"
+          ]
+        },
+        "calibration": {
+          "$ref": "#/schemas/calibration"
+        }
+      }
+    },
+    "experiment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "experiment_label",
+        "assumption_tested",
+        "method",
+        "success_signal",
+        "timebox"
+      ],
+      "properties": {
+        "experiment_label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "assumption_tested": {
+          "type": "string",
+          "minLength": 1
+        },
+        "method": {
+          "type": "string",
+          "minLength": 1
+        },
+        "success_signal": {
+          "type": "string",
+          "minLength": 1
+        },
+        "timebox": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "calibration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "critical_missing_count",
+        "proceed_blocked",
+        "rule_applied"
+      ],
+      "properties": {
+        "critical_missing_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "proceed_blocked": {
+          "type": "boolean"
+        },
+        "rule_applied": {
+          "type": "string",
+          "const": "If any axis score is 1 or Evidence score is <= 2, decision must be PARK or PIVOT. If all axes are >= 3 and Pain is >= 4, decision may be PROCEED TO PROTOTYPE."
+        }
+      }
+    },
+    "run_log_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pass",
+        "model_name",
+        "model_version",
+        "prompt_version",
+        "timestamp"
+      ],
+      "properties": {
+        "pass": {
+          "type": "string",
+          "enum": [
+            "extraction",
+            "scoring",
+            "decision_brief"
+          ]
+        },
+        "model_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prompt_version": {
+          "type": "string",
+          "pattern": "^v[0-9]+$"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "v2_analysis_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "session_id",
+        "output_ready",
+        "brief",
+        "analysis"
+      ],
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "output_ready": {
+          "type": "boolean",
+          "const": true
+        },
+        "brief": {
+          "type": "object",
+          "description": "Preserve the existing V1 brief object so the current frontend can still render the old output."
+        },
+        "analysis": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "assumption_map",
+            "eval_scorecard",
+            "decision_brief",
+            "run_log"
+          ],
+          "properties": {
+            "schema_version": {
+              "type": "string",
+              "const": "thinkfirst_v2.0"
+            },
+            "assumption_map": {
+              "type": "array",
+              "items": {
+                "$ref": "#/schemas/assumption"
+              }
+            },
+            "eval_scorecard": {
+              "type": "array",
+              "minItems": 5,
+              "maxItems": 5,
+              "items": {
+                "$ref": "#/schemas/scorecard_item"
+              }
+            },
+            "decision_brief": {
+              "$ref": "#/schemas/decision_brief"
+            },
+            "run_log": {
+              "type": "array",
+              "minItems": 3,
+              "maxItems": 3,
+              "items": {
+                "$ref": "#/schemas/run_log_item"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "calibration_rule": {
+    "name": "scorecard_gate_blocks_false_progress",
+    "definition": "If any axis score is 1 or Evidence score is <= 2, decision must be PARK or PIVOT. If all axes are >= 3 and Pain is >= 4, decision may be PROCEED TO PROTOTYPE.",
+    "enforcement_location": "backend_before_pass_3_decision_brief",
+    "allowed_decisions_when_blocked": [
+      "PARK",
+      "PIVOT"
+    ]
+  },
+  "prompt_contract_notes": {
+    "pass_1_extraction": [
+      "quadrant must be one of exactly: Experiment now, Plan, Defer, Discover.",
+      "Do not output internal quadrant labels such as experiment_now, monitor, deprioritize, or validated.",
+      "evidence_score must follow the UI legend: 1-2 Red/Critical, 3 Orange/Weak, 4-5 Green/Solid.",
+      "next_action must be concise, ideally under 15 words, for the assumption detail box."
+    ],
+    "pass_2_scoring": [
+      "dimension_name must be one of exactly: Pain, User, Technical, Competitive, Evidence.",
+      "Return exactly five scorecard items, one per radar axis.",
+      "Each scorecard item must include supporting_assumption_ids using exact Pass 1 IDs such as A01, A02.",
+      "supporting_assumption_ids drives click behavior: clicking a radar axis highlights matching assumption dots."
+    ]
+  },
+  "v1_to_v2_evidence_mapping": {
+    "weak": [
+      "missing",
+      "claimed"
+    ],
+    "ok": [
+      "anecdotal"
+    ],
+    "strong": [
+      "observed"
+    ]
+  },
+  "ui_mapping_rules": {
+    "assumption_map_quadrants": {
+      "Experiment now": "Top right: high importance, low evidence",
+      "Plan": "Top left: high importance, high evidence",
+      "Defer": "Bottom left: low importance, low evidence",
+      "Discover": "Bottom right: low importance, high evidence"
+    },
+    "evidence_legend": {
+      "Red": "evidence_score 1-2",
+      "Orange": "evidence_score 3",
+      "Green": "evidence_score 4-5"
+    },
+    "radar_axes": [
+      "Pain",
+      "User",
+      "Technical",
+      "Competitive",
+      "Evidence"
+    ],
+    "click_behavior": "When a radar dimension is clicked, filter or highlight assumption_map items whose assumption_id appears in supporting_assumption_ids."
+  }
+}

@@ -1,0 +1,210 @@
+{
+  "session_id": "demo_persistent_cross_app_memory",
+  "output_ready": true,
+  "brief": {
+    "problem": "AI agents lose project context after a task or session ends, so long-running work becomes fragmented across tools and time.",
+    "user": "Target user not yet fully defined — see What To Do Next.",
+    "matters": "The claimed pain is repeated context loss between January and February work, especially when different agents touch the same project.",
+    "next": "- Talk to 5 builders who use more than one AI tool on the same project\n- Find 2 current memory/work-history workarounds and identify what they miss\n- Write down the exact moment context loss breaks a workflow\n- Test whether users would connect sensitive work history to a shared memory layer"
+  },
+  "analysis": {
+    "schema_version": "thinkfirst_v2.0",
+    "assumption_map": [
+      {
+        "assumption_id": "A01",
+        "assumption_label": "Builders using multiple AI agents repeatedly lose useful project context between sessions and tools.",
+        "category": "problem",
+        "mapped_v1_dimension": "problem_reality",
+        "importance_score": 5,
+        "evidence_score": 2,
+        "evidence_status": "claimed",
+        "user_evidence_quote": "Most agents \"forget\" context once a task is done.",
+        "is_critical": true,
+        "gap_flag": true,
+        "quadrant": "Experiment now",
+        "next_action": "Collect 5 recent context-loss stories."
+      },
+      {
+        "assumption_id": "A02",
+        "assumption_label": "The first target user is a builder or operator running long-lived projects across Claude, GPT, Cursor, and custom agents.",
+        "category": "target_user",
+        "mapped_v1_dimension": "user_specificity",
+        "importance_score": 5,
+        "evidence_score": 1,
+        "evidence_status": "missing",
+        "user_evidence_quote": null,
+        "is_critical": true,
+        "gap_flag": true,
+        "quadrant": "Experiment now",
+        "next_action": "Name 5 real first-segment users."
+      },
+      {
+        "assumption_id": "A03",
+        "assumption_label": "Users will trust a secure, user-owned shared context layer with sensitive work history.",
+        "category": "trust_or_risk",
+        "mapped_v1_dimension": null,
+        "importance_score": 5,
+        "evidence_score": 1,
+        "evidence_status": "missing",
+        "user_evidence_quote": null,
+        "is_critical": true,
+        "gap_flag": true,
+        "quadrant": "Experiment now",
+        "next_action": "Run 5 trust-boundary interviews."
+      },
+      {
+        "assumption_id": "A04",
+        "assumption_label": "Existing agent tools expose enough integration surface for cross-app memory to be useful.",
+        "category": "feasibility",
+        "mapped_v1_dimension": "workaround_check",
+        "importance_score": 4,
+        "evidence_score": 1,
+        "evidence_status": "missing",
+        "user_evidence_quote": null,
+        "is_critical": true,
+        "gap_flag": true,
+        "quadrant": "Experiment now",
+        "next_action": "Prototype one two-tool integration."
+      },
+      {
+        "assumption_id": "A05",
+        "assumption_label": "The market lacks an open, interoperable memory layer despite movement toward personalized AI.",
+        "category": "workaround",
+        "mapped_v1_dimension": "workaround_check",
+        "importance_score": 4,
+        "evidence_score": 2,
+        "evidence_status": "claimed",
+        "user_evidence_quote": "Google, Microsoft, and Anthropic are all racing toward “personalized AI,” but none have cracked open, interoperable memory yet.",
+        "is_critical": false,
+        "gap_flag": true,
+        "quadrant": "Discover",
+        "next_action": "Map 5 memory competitors."
+      }
+    ],
+    "eval_scorecard": [
+      {
+        "dimension_name": "Pain",
+        "score": 3,
+        "reason": "The pain is concrete and plausible, but the current evidence is still founder-claimed rather than observed.",
+        "failure_mode": "The product may solve a real annoyance that users tolerate rather than an urgent workflow blocker.",
+        "improvement_tip": "Collect recent user stories where forgotten context caused measurable rework, delay, or bad output.",
+        "supporting_assumption_ids": [
+          "A01"
+        ]
+      },
+      {
+        "dimension_name": "User",
+        "score": 2,
+        "reason": "The idea names broad users and tools, but no specific person or narrow first segment.",
+        "failure_mode": "The target user could become everyone who uses AI, which makes discovery and positioning blurry.",
+        "improvement_tip": "Pick one first segment, such as AI-native solo builders managing client projects across Cursor and ChatGPT.",
+        "supporting_assumption_ids": [
+          "A02"
+        ]
+      },
+      {
+        "dimension_name": "Technical",
+        "score": 2,
+        "reason": "The architecture is plausible, but the first integration wedge is not proven.",
+        "failure_mode": "Universal infrastructure may be overbuilt before one useful workflow works.",
+        "improvement_tip": "Validate one two-tool memory loop before expanding the infrastructure.",
+        "supporting_assumption_ids": [
+          "A04"
+        ]
+      },
+      {
+        "dimension_name": "Competitive",
+        "score": 2,
+        "reason": "Existing incumbents are mentioned, but actual user workarounds are not yet described.",
+        "failure_mode": "Users may already solve enough of this with project docs, tool-native memory, or manual summaries.",
+        "improvement_tip": "Document current workarounds before proposing a vector database or shared context layer.",
+        "supporting_assumption_ids": [
+          "A04",
+          "A05"
+        ]
+      },
+      {
+        "dimension_name": "Evidence",
+        "score": 2,
+        "reason": "Most critical assumptions are missing or claimed, not backed by observed user behavior.",
+        "failure_mode": "The idea can sound strategically inevitable while remaining unvalidated at the user level.",
+        "improvement_tip": "Run discovery before architecture: users, trust boundaries, current workflows, and willingness to connect data.",
+        "supporting_assumption_ids": [
+          "A01",
+          "A02",
+          "A03",
+          "A04"
+        ]
+      }
+    ],
+    "decision_brief": {
+      "one_sentence_idea": "Build a secure, user-owned shared context layer that lets AI agents across apps remember long-running project history.",
+      "target_user": "Not yet specific enough; likely AI-native builders or operators using multiple AI tools on long-running projects.",
+      "pain_chain": "Agents forget prior work, users re-explain context, outputs degrade or repeat work, and projects lose continuity across time and tools.",
+      "current_workaround": "Not yet validated; likely manual project docs, copy-pasted summaries, tool-native memory, or ad hoc notes.",
+      "riskiest_assumption": "Users will trust and adopt a cross-app memory layer for sensitive project history.",
+      "evidence_needed": "Observed examples from real multi-tool AI users showing repeated context loss, current workaround failure, and willingness to connect work history.",
+      "invalidation_threshold": "If fewer than 3 of 10 target users report weekly context-loss pain or none would connect project history to a shared layer, revise or park the idea.",
+      "next_3_experiments": [
+        {
+          "experiment_label": "Context-loss interviews",
+          "assumption_tested": "Multi-tool AI users repeatedly lose important project context.",
+          "method": "Interview 10 builders/operators and ask for their last 3 AI-assisted project workflows.",
+          "success_signal": "At least 6 describe recent context-loss rework without being prompted.",
+          "timebox": "3 days"
+        },
+        {
+          "experiment_label": "Workaround teardown",
+          "assumption_tested": "Current memory/work-history workarounds are insufficient.",
+          "method": "Ask 5 users to screenshare how they preserve context between AI tools today.",
+          "success_signal": "At least 3 show brittle manual workarounds with clear failure points.",
+          "timebox": "2 days"
+        },
+        {
+          "experiment_label": "Trust boundary test",
+          "assumption_tested": "Users will grant a shared layer access to useful project context.",
+          "method": "Show a permission mockup and ask users what data they would allow, deny, redact, or delete.",
+          "success_signal": "At least 5 of 10 accept a scoped permission model for one real workflow.",
+          "timebox": "2 days"
+        }
+      ],
+      "confidence_level": "low",
+      "honest_gaps": [
+        "No named first user segment yet.",
+        "No observed user examples yet.",
+        "No quantified frequency or cost yet.",
+        "No validated trust boundary yet.",
+        "No tested integration wedge yet."
+      ],
+      "decision": "PARK",
+      "calibration": {
+        "critical_missing_count": 3,
+        "proceed_blocked": true,
+        "rule_applied": "If any axis score is 1 or Evidence score is <= 2, decision must be PARK or PIVOT. If all axes are >= 3 and Pain is >= 4, decision may be PROCEED TO PROTOTYPE."
+      }
+    },
+    "run_log": [
+      {
+        "pass": "extraction",
+        "model_name": "TBD",
+        "model_version": "TBD",
+        "prompt_version": "v1",
+        "timestamp": "2026-04-30T03:55:00.000Z"
+      },
+      {
+        "pass": "scoring",
+        "model_name": "TBD",
+        "model_version": "TBD",
+        "prompt_version": "v1",
+        "timestamp": "2026-04-30T03:55:00.000Z"
+      },
+      {
+        "pass": "decision_brief",
+        "model_name": "TBD",
+        "model_version": "TBD",
+        "prompt_version": "v1",
+        "timestamp": "2026-04-30T03:55:00.000Z"
+      }
+    ]
+  }
+}
