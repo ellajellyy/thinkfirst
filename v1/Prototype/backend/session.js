@@ -2,7 +2,7 @@
 
 const { v4: uuidv4 } = require('uuid');
 
-const DIMENSIONS = ['user_specificity', 'problem_reality', 'frequency_urgency', 'workaround_check'];
+const DIMENSIONS = ['user_specificity', 'problem_reality', 'frequency_urgency', 'workaround_check', 'technical_feasibility'];
 
 function emptyDimensionState() {
   return DIMENSIONS.reduce((acc, dim) => {

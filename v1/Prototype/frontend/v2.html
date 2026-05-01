@@ -164,6 +164,21 @@ function Orb({ size = 56, style = {} }) {
   );
 }
 
+// ── Typing indicator (three bouncing dots) ────────────────────────────────────
+function TypingIndicator() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, height: 34 }}>
+      {[0, 200, 400].map(delay => (
+        <div key={delay} style={{
+          width: 7, height: 7, borderRadius: '50%',
+          background: B.purple,
+          animation: `dotBounce 1.2s ease-in-out ${delay}ms infinite`,
+        }} />
+      ))}
+    </div>
+  );
+}
+
 // ── Screen: Loading / Error ───────────────────────────────────────────────────
 function LoadingScreen({ error }) {
   return (
@@ -292,6 +307,7 @@ function ChatScreen({ sessionId, seed, onComplete }) {
   const [focused, setFocused] = useState(false);
   const [showInput, setShowInput] = useState(false);
   const [isClosing, setIsClosing] = useState(false); // final "Give me a moment" state
+  const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState(0);
   const inputRef = useRef(null);
@@ -322,7 +338,7 @@ function ChatScreen({ sessionId, seed, onComplete }) {
     apiChat(sessionIdRef.current, seed)
       .then(data => {
         if (!mountedRef.current) return;
-        showQuestion(data.message, 0.1);
+        showQuestion(data.message.replace(/\s*—\s*/g, ', '), 0.1);
         if (data.output_ready) triggerComplete(data);
       })
       .catch(err => { if (mountedRef.current) setError(err.message); });
@@ -348,19 +364,25 @@ function ChatScreen({ sessionId, seed, onComplete }) {
     if (!v || isClosing) return;
     setInput('');
     setError(null);
+    setVisible(false);
     setShowInput(false);
+    setIsTyping(true);
 
     try {
       const data = await apiChat(sessionIdRef.current, v);
       if (!mountedRef.current) return;
+      const msg = data.message.replace(/\s*—\s*/g, ', ');
+      setIsTyping(false);
       if (data.output_ready) {
-        showQuestion(data.message, 1);
+        showQuestion(msg, 1);
         setTimeout(() => triggerComplete(data), 800);
       } else {
-        showQuestion(data.message, progress + 0.12);
+        showQuestion(msg, progress + 0.12);
       }
     } catch (err) {
       if (mountedRef.current) {
+        setIsTyping(false);
+        setVisible(true);
         setError(err.message);
         setShowInput(true);
         inputRef.current?.focus();
@@ -399,71 +421,84 @@ function ChatScreen({ sessionId, seed, onComplete }) {
 
       {/* Centered question */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 40px', position: 'relative', zIndex: 1 }}>
-        <div style={{
-          maxWidth: 560, width: '100%',
-          opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(20px)',
-          transition: 'opacity 0.5s cubic-bezier(0.4,0,0.2,1), transform 0.5s cubic-bezier(0.4,0,0.2,1)',
-        }}>
-          <p style={{
-            fontFamily: 'Source Serif 4', fontWeight: 300,
-            fontSize: 'clamp(22px, 3vw, 34px)', lineHeight: 1.35, color: B.dark,
-            letterSpacing: '-0.4px', marginBottom: showInput ? 40 : 0,
+        <div style={{ maxWidth: 560, width: '100%', position: 'relative' }}>
+
+          {/* Typing indicator — absolute overlay, fades in while question fades out */}
+          <div style={{
+            position: 'absolute', top: 0, left: 0,
+            opacity: isTyping ? 1 : 0,
+            transition: 'opacity 0.25s ease',
+            pointerEvents: 'none',
           }}>
-            {currentQuestion}
-          </p>
+            <TypingIndicator />
+          </div>
 
-          {showInput && !isClosing && (
-            <>
-              <div style={{ position: 'relative' }}>
-                <textarea
-                  ref={inputRef}
-                  value={input}
-                  onChange={e => setInput(e.target.value)}
-                  onFocus={() => setFocused(true)}
-                  onBlur={() => setFocused(false)}
-                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-                  placeholder="Your thoughts…"
-                  rows={2}
-                  style={{
-                    width: '100%', resize: 'none',
-                    fontFamily: 'Inter', fontSize: 16, color: B.dark,
-                    background: 'rgba(255,255,255,0.72)',
-                    border: `1.5px solid ${focused ? B.purple + '66' : 'rgba(17,24,39,0.1)'}`,
-                    borderRadius: 16, padding: '14px 56px 14px 18px',
-                    outline: 'none', lineHeight: 1.55,
-                    boxShadow: focused ? `0 0 0 4px ${B.purple}12, 0 2px 16px rgba(0,0,0,0.06)` : '0 2px 12px rgba(0,0,0,0.05)',
-                    backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
-                    transition: 'all 0.2s ease',
-                  }}
-                />
-                <button onClick={send} disabled={!input.trim()} style={{
-                  position: 'absolute', right: 10, bottom: 10,
-                  width: 38, height: 38, borderRadius: '50%',
-                  background: input.trim() ? `linear-gradient(140deg, ${B.purple}, ${B.pink})` : 'rgba(17,24,39,0.08)',
-                  border: 'none', cursor: input.trim() ? 'pointer' : 'default',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transition: 'all 0.2s ease', transform: input.trim() ? 'scale(1)' : 'scale(0.86)',
-                  boxShadow: input.trim() ? `0 2px 12px ${B.purple}40` : 'none',
-                }}>
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                    <path d="M8 13V3M3 8l5-5 5 5" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-              </div>
-              <p style={{ marginTop: 10, fontSize: 12, color: B.light }}>
-                Press <kbd style={{ background: 'rgba(0,0,0,0.06)', padding: '1px 5px', borderRadius: 4, fontSize: 11 }}>Enter ↵</kbd> to continue
-              </p>
-            </>
-          )}
-
-          {error && (
-            <p style={{ marginTop: 12, fontSize: 13, color: '#EF4444', animation: 'fadeIn 0.3s ease' }}>
-              {error} — <button onClick={() => { setError(null); setShowInput(true); inputRef.current?.focus(); }}
-                style={{ color: '#EF4444', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13 }}>
-                Try again
-              </button>
+          {/* Question + input */}
+          <div style={{
+            opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(20px)',
+            transition: 'opacity 0.5s cubic-bezier(0.4,0,0.2,1), transform 0.5s cubic-bezier(0.4,0,0.2,1)',
+          }}>
+            <p style={{
+              fontFamily: 'Source Serif 4', fontWeight: 300,
+              fontSize: 'clamp(22px, 3vw, 34px)', lineHeight: 1.35, color: B.dark,
+              letterSpacing: '-0.4px', marginBottom: showInput ? 40 : 0,
+            }}>
+              {currentQuestion}
             </p>
-          )}
+
+            {showInput && !isClosing && (
+              <>
+                <div style={{ position: 'relative' }}>
+                  <textarea
+                    ref={inputRef}
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onFocus={() => setFocused(true)}
+                    onBlur={() => setFocused(false)}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
+                    placeholder="Your thoughts…"
+                    rows={2}
+                    style={{
+                      width: '100%', resize: 'none',
+                      fontFamily: 'Inter', fontSize: 16, color: B.dark,
+                      background: 'rgba(255,255,255,0.72)',
+                      border: `1.5px solid ${focused ? B.purple + '66' : 'rgba(17,24,39,0.1)'}`,
+                      borderRadius: 16, padding: '14px 56px 14px 18px',
+                      outline: 'none', lineHeight: 1.55,
+                      boxShadow: focused ? `0 0 0 4px ${B.purple}12, 0 2px 16px rgba(0,0,0,0.06)` : '0 2px 12px rgba(0,0,0,0.05)',
+                      backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+                      transition: 'all 0.2s ease',
+                    }}
+                  />
+                  <button onClick={send} disabled={!input.trim()} style={{
+                    position: 'absolute', right: 10, bottom: 10,
+                    width: 38, height: 38, borderRadius: '50%',
+                    background: input.trim() ? `linear-gradient(140deg, ${B.purple}, ${B.pink})` : 'rgba(17,24,39,0.08)',
+                    border: 'none', cursor: input.trim() ? 'pointer' : 'default',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.2s ease', transform: input.trim() ? 'scale(1)' : 'scale(0.86)',
+                    boxShadow: input.trim() ? `0 2px 12px ${B.purple}40` : 'none',
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                      <path d="M8 13V3M3 8l5-5 5 5" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                </div>
+                <p style={{ marginTop: 10, fontSize: 12, color: B.light }}>
+                  Press <kbd style={{ background: 'rgba(0,0,0,0.06)', padding: '1px 5px', borderRadius: 4, fontSize: 11 }}>Enter ↵</kbd> to continue
+                </p>
+              </>
+            )}
+
+            {error && (
+              <p style={{ marginTop: 12, fontSize: 13, color: '#EF4444', animation: 'fadeIn 0.3s ease' }}>
+                {error} — <button onClick={() => { setError(null); setShowInput(true); inputRef.current?.focus(); }}
+                  style={{ color: '#EF4444', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13 }}>
+                  Try again
+                </button>
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -544,6 +579,73 @@ function AnalyzingScreen({ sessionId, onComplete }) {
         borderTopColor: B.purple,
         animation: 'spin 0.8s linear infinite',
       }} />
+    </div>
+  );
+}
+
+// ── Screen: Ready (interview done, waiting for user to trigger analysis) ──────
+function ReadyScreen({ onGenerate }) {
+  const [visible, setVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => { setTimeout(() => setVisible(true), 80); }, []);
+
+  const handleClick = () => { setLoading(true); onGenerate(); };
+
+  return (
+    <div style={{
+      height: '100vh', display: 'flex', flexDirection: 'column',
+      position: 'relative', overflow: 'hidden', background: B.bg,
+      animation: 'fadeIn 0.4s ease',
+    }}>
+      {/* Ambient orb */}
+      <div style={{
+        position: 'absolute', right: '-8vw', top: '50%', transform: 'translateY(-50%)',
+        width: '52vw', height: '52vw', maxWidth: 640, maxHeight: 640, borderRadius: '50%',
+        background: `radial-gradient(circle at 42% 42%, ${B.yellow}cc 0%, ${B.pink}bb 28%, ${B.purple}cc 58%, ${B.blue}66 80%, transparent 100%)`,
+        filter: 'blur(52px)', opacity: 0.44, pointerEvents: 'none',
+      }} />
+
+      {/* Nav */}
+      <div style={{ position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', padding: '20px 40px', height: 64 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+          <Orb size={22} style={{ animation: 'orbFloat 5s ease-in-out infinite' }} />
+          <span style={{ fontFamily: 'Inter', fontWeight: 600, fontSize: 14, color: B.dark, letterSpacing: '-0.2px' }}>ThinkFirst</span>
+        </div>
+      </div>
+
+      {/* Centered content */}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 40px', position: 'relative', zIndex: 1 }}>
+        <div style={{
+          maxWidth: 480, width: '100%', textAlign: 'center',
+          opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(16px)',
+          transition: 'opacity 0.5s cubic-bezier(0.4,0,0.2,1), transform 0.5s cubic-bezier(0.4,0,0.2,1)',
+        }}>
+          <Orb size={44} style={{ margin: '0 auto 28px', display: 'block', animation: 'orbFloat 3.5s ease-in-out infinite, orbPulse 3.5s ease-in-out infinite' }} />
+          <p style={{
+            fontFamily: 'Source Serif 4', fontWeight: 300,
+            fontSize: 'clamp(20px, 2.6vw, 30px)', color: B.dark,
+            letterSpacing: '-0.4px', lineHeight: 1.35, marginBottom: 36,
+          }}>
+            Your conversation is complete.
+          </p>
+          <button
+            onClick={handleClick}
+            disabled={loading}
+            style={{
+              padding: '14px 36px', borderRadius: 14,
+              background: loading ? 'rgba(17,24,39,0.08)' : `linear-gradient(140deg, ${B.purple}, ${B.pink})`,
+              border: 'none', cursor: loading ? 'default' : 'pointer',
+              fontFamily: 'Inter', fontSize: 15, fontWeight: 600,
+              color: loading ? B.mid : 'white',
+              boxShadow: loading ? 'none' : `0 4px 20px ${B.purple}40`,
+              transition: 'all 0.2s ease', letterSpacing: '-0.01em',
+            }}
+          >
+            {loading ? 'Starting analysis…' : 'Generate Analysis'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -655,10 +757,10 @@ function AssumptionMapSection({ assumptionMap, activeAxis, axisMapping }) {
                   const yPct = 0.08 + (5 - a.importance_score) / 4 * 0.84;
                   return (
                     <div
-                      key={a.id}
+                      key={a.assumption_id}
                       ref={el => gridDotRefs.current[i] = el}
                       className="assumption-dot"
-                      data-label={a.label}
+                      data-label={a.assumption_label}
                       data-index={i + 1}
                       onClick={e => { e.stopPropagation(); selectItem(i + 1); }}
                       style={{ left: `${xPct * 100}%`, top: `${yPct * 100}%`, background: dotColor(a.evidence_score) }}
@@ -702,10 +804,10 @@ function AssumptionMapSection({ assumptionMap, activeAxis, axisMapping }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {assumptionMap.map((a, i) => {
               const isSelected = selectedIdx === i + 1;
-              const truncated = a.label.length > 46 ? a.label.slice(0, 44) + '…' : a.label;
+              const truncated = a.assumption_label.length > 46 ? a.assumption_label.slice(0, 44) + '…' : a.assumption_label;
               return (
                 <div
-                  key={a.id}
+                  key={a.assumption_id}
                   ref={el => listItemRefs.current[i] = el}
                   className="alist-item"
                   style={{
@@ -721,7 +823,7 @@ function AssumptionMapSection({ assumptionMap, activeAxis, axisMapping }) {
                     fontSize: 12, color: isSelected ? R.text : R.textSec,
                     fontWeight: isSelected ? 500 : 400,
                     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0,
-                  }} title={a.label}>
+                  }} title={a.assumption_label}>
                     {truncated}
                   </span>
                 </div>
@@ -994,7 +1096,7 @@ function DiagnosticReport({ analysis, rawIdea, onRestart }) {
   evalScorecard.forEach(d => {
     if (d.supporting_assumption_ids?.length) {
       axisMapping[d.dimension_name] = d.supporting_assumption_ids.map(id => {
-        const idx = assumptionMap.findIndex(a => a.id === id);
+        const idx = assumptionMap.findIndex(a => a.assumption_id === id);
         return idx >= 0 ? idx + 1 : null;
       }).filter(Boolean);
     }
@@ -1167,6 +1269,10 @@ function App() {
   const handleStart = (idea) => { setSeed(idea); setScreen('chat'); };
 
   const handleChatComplete = (sid) => {
+    setScreen('ready');
+  };
+
+  const handleGenerate = () => {
     setScreen('analyzing');
   };
 
@@ -1201,6 +1307,9 @@ function App() {
         onComplete={handleChatComplete}
       />
     );
+  }
+  if (screen === 'ready' && sessionId) {
+    return <ReadyScreen onGenerate={handleGenerate} />;
   }
   if (screen === 'analyzing' && sessionId) {
     return (

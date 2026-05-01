@@ -55,12 +55,12 @@ function computeCalibration(scorecard) {
   const painScore     = painDim ? painDim.score : 0;
 
   if (anyScore1 || evidenceScore <= 2) {
-    return { calibration_decision: 'PARK', proceed_blocked: true, rule_applied: 'any_axis_1_or_evidence_lte_2' };
+    return { calibration_decision: 'PARK', proceed_blocked: true, calibration_reason: 'any_axis_1_or_evidence_lte_2' };
   }
   if (allGte3 && painScore >= 4) {
-    return { calibration_decision: 'PROCEED TO PROTOTYPE', proceed_blocked: false, rule_applied: 'all_axes_gte_3_and_pain_gte_4' };
+    return { calibration_decision: 'PROCEED TO PROTOTYPE', proceed_blocked: false, calibration_reason: 'all_axes_gte_3_and_pain_gte_4' };
   }
-  return { calibration_decision: 'INVESTIGATE', proceed_blocked: true, rule_applied: 'mixed_evidence' };
+  return { calibration_decision: 'INVESTIGATE', proceed_blocked: true, calibration_reason: 'mixed_evidence' };
 }
 
 function check(label, condition, detail = '') {
@@ -124,7 +124,7 @@ async function run() {
   // ── Calibration (hard gate) ──────────────────────────────────────────────────
   console.log('Calibration gate...');
   const calibration = computeCalibration(evalScorecard);
-  console.log(`  decision: ${calibration.calibration_decision}  |  blocked: ${calibration.proceed_blocked}  |  rule: ${calibration.rule_applied}`);
+  console.log(`  decision: ${calibration.calibration_decision}  |  blocked: ${calibration.proceed_blocked}  |  reason: ${calibration.calibration_reason}`);
   const evidenceScore = evalScorecard.find(d => d.dimension_name === 'Evidence')?.score;
   if (evidenceScore <= 2 || evalScorecard.some(d => d.score === 1)) {
     check('Blocked correctly when evidence weak', calibration.proceed_blocked === true);

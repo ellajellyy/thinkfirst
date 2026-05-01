@@ -86,6 +86,7 @@ app.post('/api/analyze', async (req, res) => {
   }
 });
 
+
 app.listen(PORT, () => {
   console.log(`ThinkFirst running at http://localhost:${PORT}`);
 });

@@ -201,7 +201,7 @@ async function callPass3(assumptionMap, scorecard, calibration) {
 
   const userInput = `## Calibration (Pre-computed by backend — do not override)
 calibration_decision: "${calibration.calibration_decision}"
-calibration_reason: "${calibration.rule_applied}"
+calibration_reason: "${calibration.calibration_reason}"
 proceed_blocked: ${calibration.proceed_blocked}
 
 ## Assumption Map
