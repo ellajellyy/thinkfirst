@@ -84,8 +84,8 @@ async function run() {
     console.log(`  model: ${result.meta.model_name}  |  tokens in/out: ${result.meta.input_tokens}/${result.meta.output_tokens}`);
     check('Returns an array',        Array.isArray(assumptionMap));
     check('Has 4–8 assumptions',     assumptionMap.length >= 4 && assumptionMap.length <= 8, `got ${assumptionMap.length}`);
-    check('Each has id field',       assumptionMap.every(a => a.id));
-    check('Each has label field',    assumptionMap.every(a => a.label));
+    check('Each has id field',    assumptionMap.every(a => a.assumption_id));
+    check('Each has label field', assumptionMap.every(a => a.assumption_label));
     check('Each has evidence_score', assumptionMap.every(a => typeof a.evidence_score === 'number'));
     check('Each has importance_score', assumptionMap.every(a => typeof a.importance_score === 'number'));
     check('Each has quadrant field', assumptionMap.every(a => a.quadrant));
