@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "buildCommand": "cp thinkfirstlanding.html v1/Prototype/frontend/landing.html",
+  "outputDirectory": "v1/Prototype/frontend",
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/index" },
+    { "source": "/app", "destination": "/v2.html" },
+    { "source": "/", "destination": "/landing.html" }
+  ]
+}
