@@ -116,4 +116,4 @@ When `output_ready: true` is returned from `/api/chat`, the `brief` field contai
 ---
 
 ## Prototype
-Check here: https://thinkfirst-xi.vercel.app/ 
+Check here: https://thinkfirst-be.vercel.app/ 
